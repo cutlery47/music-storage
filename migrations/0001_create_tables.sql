@@ -13,7 +13,7 @@ CREATE TABLE music_schema.songs(
 -- Таблица для хранения информации о песнях
 CREATE TABLE music_schema.songs_details(
     id              music_schema.uuid_key       PRIMARY KEY,
-    song_id         UUID                        REFERENCES music_schema.songs(id),
+    song_id         UUID                        REFERENCES music_schema.songs(id) ON DELETE CASCADE,
     released_at     date,
     link            music_schema.string,
 
@@ -23,7 +23,7 @@ CREATE TABLE music_schema.songs_details(
 -- Таблица для хранения куплетов песен
 CREATE TABLE music_schema.songs_verses(
     id              music_schema.uuid_key        PRIMARY KEY,
-    song_id         UUID                         REFERENCES music_schema.songs(id),
+    song_id         UUID                         REFERENCES music_schema.songs(id) ON DELETE CASCADE,
     verse_id        music_schema.pos_int,
     verse           text,
 

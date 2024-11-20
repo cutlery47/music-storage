@@ -2,12 +2,10 @@ package main
 
 import (
 	"log"
-	"time"
+
+	"github.com/cutlery47/music-storage/internal/app"
 )
 
 func main() {
-	for {
-		log.Println("data")
-		time.Sleep(10 * time.Second)
-	}
+	log.Fatal("error: ", app.Run())
 }
