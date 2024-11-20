@@ -1,0 +1,32 @@
+services:
+  app:
+    container_name: music-app-container
+    image: music-app-image
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+      tags:
+      - "music-app-image:latest"
+    env_file: '.env'
+    ports:
+      - "${APPLICATION_PORT}:${APPLICATION_PORT}"
+
+  postgres:
+    container_name: music-postgres-container
+    image: music-postgres-image:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+      tags:
+      - "music-postgres-image:latest"
+    expose:
+      - "5432"
+    env_file: '.env'
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - 'postgres_data:/var/lib/postgersql/data'
+
+volumes:
+  postgres_data:
+    driver: local
