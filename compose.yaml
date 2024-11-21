@@ -1,15 +1,17 @@
 services:
-  # app:
-  #   container_name: music-app-container
-  #   image: music-app-image
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.app
-  #     tags:
-  #     - "music-app-image:latest"
-  #   env_file: '.env'
-  #   ports:
-  #     - "${HTTP_PORT}:${HTTP_PORT}"
+  app:
+    container_name: music-app-container
+    image: music-app-image
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+      tags:
+      - "music-app-image:latest"
+    env_file: 'default.env'
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    volumes:
+      - '${OUTTER_LOGS_DIR}:/go/logs/'
 
   postgres:
     container_name: music-postgres-container
@@ -19,11 +21,9 @@ services:
       dockerfile: Dockerfile.postgres
       tags:
       - "music-postgres-image:latest"
-    ports:
-      - "${POSTGRES_PORT}:5432"
-    # expose:
-    #   - "5432"
-    env_file: '.env'
+    expose:
+      - "${POSTGRES_PORT}"
+    env_file: 'default.env'
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:

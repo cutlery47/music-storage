@@ -47,7 +47,7 @@ func Run() error {
 	}
 
 	url := fmt.Sprintf(
-		"postgresql://%v:%v@localhost:%v/music?sslmode=%v",
+		"postgresql://%v:%v@music-postgres-container:%v/music?sslmode=%v",
 		config.PostgresUser,
 		config.PostgresPassword,
 		config.PostgresPort,
