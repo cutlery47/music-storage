@@ -6,6 +6,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	ErrBadQuery           = echo.NewHTTPError(400, "all required query parameters should be provided...")
+	ErrBadQueryTime       = echo.NewHTTPError(400, "couldn't parse provided time...")
+	ErrBadQueryPagination = echo.NewHTTPError(400, "couldn't parse pagination params...")
+)
+
 var errMap = map[error]*echo.HTTPError{
 	repository.ErrNotFound:      echo.ErrNotFound,
 	repository.ErrAlreadyExists: echo.ErrBadRequest,

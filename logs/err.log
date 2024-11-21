@@ -1,0 +1,6 @@
+{"level":"error","msg":"ms.repo.ReadDetail: mr.db.PrepareContext: dial tcp: lookup music-postgres-container123 on 127.0.0.53:53: server misbehaving","time":"2024-11-21T15:03:22+03:00"}
+{"level":"error","msg":"ms.repo.ReadDetail: mr.db.PrepareContext: dial tcp: lookup music-postgres-container on 127.0.0.53:53: server misbehaving","time":"2024-11-21T15:04:06+03:00"}
+{"level":"error","msg":"ms.repo.ReadDetail: mr.db.PrepareContext: pq: password authentication failed for user \"disable\"","time":"2024-11-21T15:04:47+03:00"}
+{"level":"error","msg":"ms.repo.ReadDetail: no data was found...","time":"2024-11-21T15:06:41+03:00"}
+{"level":"error","msg":"ms.repo.ReadDetail: no data was found...","time":"2024-11-21T15:21:13+03:00"}
+{"level":"error","msg":"ms.repo.ReadDetail: no data was found...","time":"2024-11-21T15:23:12+03:00"}
