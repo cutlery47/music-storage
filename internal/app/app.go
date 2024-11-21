@@ -23,15 +23,12 @@ func Run() error {
 
 	srv := service.NewMusicService(repo)
 
-	date := time.Date(2001, 10, 8, 0, 0, 0, 0, time.UTC)
-	group := "Linkin Park"
+	// date := time.Date(2001, 10, 8, 0, 0, 0, 0, time.UTC)
+	// group := "Linkin Park"
 
-	filter := models.Filter{
-		Group:         &group,
-		ReleasedAfter: &date,
-	}
+	filter := models.Filter{}
 
-	songs, err := srv.GetSongs(ctx, 0, 10, filter)
+	songs, err := srv.GetSongs(ctx, 10, 0, filter)
 	if err != nil {
 		return fmt.Errorf("srv.GetSongs: %v", err)
 	}
@@ -39,8 +36,8 @@ func Run() error {
 	log.Println("songs:", songs)
 
 	song := models.Song{
-		GroupName: "Linkin Park",
-		SongName:  "In the End",
+		GroupName: "Coldplay",
+		SongName:  "Fix You",
 	}
 
 	info, err := srv.GetDetail(ctx, song)
@@ -50,9 +47,39 @@ func Run() error {
 
 	log.Println("info:", info)
 
-	// if err := srv.Delete(ctx, song); err != nil {
-	// 	return fmt.Errorf("srv.Delete: %v", err)
-	// }
+	text, err := srv.GetText(ctx, 1, 1, song)
+	if err != nil {
+		return fmt.Errorf("srv.GetText: %v", err)
+	}
+
+	log.Println("text:", text)
+
+	newSong := models.SongWithDetailPlain{
+		Song: models.Song{
+			GroupName: "Kendrick Lamar",
+			SongName:  "6:16 in LA",
+		},
+		SongDetail: models.SongDetail{
+			ReleaseDate: time.Now(),
+			Link:        "https://example.com/xyu",
+		},
+		Text: "I fuck Drake aye, aye\n I love kids aye, aye\n",
+	}
+
+	if err := srv.Create(ctx, newSong); err != nil {
+		return fmt.Errorf("srv.Create: %v", err)
+	}
+
+	newText, err := srv.GetText(ctx, 10, 0, newSong.Song)
+	if err != nil {
+		return fmt.Errorf("srv.GetText: %v", err)
+	}
+
+	fmt.Println("text:", newText)
+
+	if err := srv.Delete(ctx, newSong.Song); err != nil {
+		return fmt.Errorf("srv.Delete: %v", err)
+	}
 
 	return nil
 }

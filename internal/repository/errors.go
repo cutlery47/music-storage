@@ -4,5 +4,6 @@ import "errors"
 
 var (
 	ErrFiltersNotProvided = errors.New("filters were not provided...")
-	ErrSongNotFound       = errors.New("song was not found...")
+	ErrNotFound           = errors.New("no data was found...")
+	ErrAlreadyExists      = errors.New("data already exists...")
 )
