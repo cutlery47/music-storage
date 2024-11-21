@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -28,6 +29,16 @@ func newSongRoutes(g *echo.Group, srv service.Service, e *errMapper) {
 	g.PUT("", r.updateSong)
 }
 
+// @Summary 		Get Info
+// @Description 	Get info about a particular song
+// @Tags 			Songs
+// @Param			group		query		string		true    "desired group"
+// @Param 			song		query		string		true	"desired song"
+// @Success			200 		{object} 	models.SongDetail
+// @Failure 		400			{object}    echo.HTTPError
+// @Failure			404			{object}	echo.HTTPError
+// @Failure			500			{object} 	echo.HTTPError
+// @Router 			/api/v1/songs/info [get]
 func (r *songRoutes) getInfo(c echo.Context) error {
 	params := c.QueryParams()
 
@@ -43,12 +54,27 @@ func (r *songRoutes) getInfo(c echo.Context) error {
 	ctx := c.Request().Context()
 	detail, err := r.srv.GetDetail(ctx, song)
 	if err != nil {
+		fmt.Println(err)
 		return r.e.Map(err)
 	}
 
 	return c.JSON(200, detail)
 }
 
+// @Summary 		Get Songs
+// @Description 	Get songs by specified filters
+// @Tags 			Songs
+// @Param			group				query		string		false   "desired group"
+// @Param 			song				query		string		false   "desired song"
+// @Param			releasedBefore		query		string		false   "upper time-bound for when the song was released"
+// @Param 			releasedAfter		query		string		false	"lower time-bound for when the song was released"
+// @Param			limit				query		int			true    "pagination limit"
+// @Param 			offset				query		int			true	"pagination offset"
+// @Success			200 				{object} 	[]models.SongWithDetail
+// @Failure 		400					{object}    echo.HTTPError
+// @Failure			404					{object}	echo.HTTPError
+// @Failure			500					{object} 	echo.HTTPError
+// @Router 			/api/v1/songs [get]
 func (r *songRoutes) getSongs(c echo.Context) error {
 	params := c.QueryParams()
 
@@ -107,6 +133,18 @@ func (r *songRoutes) getSongs(c echo.Context) error {
 	return c.JSON(200, songs)
 }
 
+// @Summary 		Get Texts
+// @Description 	Get specified songs' lyrics
+// @Tags 			Songs
+// @Param			group				query		string		true   "desired group"
+// @Param 			song				query		string		true   "desired song"
+// @Param			limit				query		int			true    "pagination limit"
+// @Param 			offset				query		int			true	"pagination offset"
+// @Success			200 				{object} 	string
+// @Failure 		400					{object}    echo.HTTPError
+// @Failure			404					{object}	echo.HTTPError
+// @Failure			500					{object} 	echo.HTTPError
+// @Router 			/api/v1/songs/text [get]
 func (r *songRoutes) getText(c echo.Context) error {
 	params := c.QueryParams()
 
@@ -140,6 +178,16 @@ func (r *songRoutes) getText(c echo.Context) error {
 	return c.JSON(200, text)
 }
 
+// @Summary 		Delete Song
+// @Description 	Delete specific song
+// @Tags 			Songs
+// @Param			group				query		string		true   "desired group"
+// @Param 			song				query		string		true   "desired song"
+// @Success			200 				{object} 	string
+// @Failure 		400					{object}    echo.HTTPError
+// @Failure			404					{object}	echo.HTTPError
+// @Failure			500					{object} 	echo.HTTPError
+// @Router 			/api/v1/songs [delete]
 func (r *songRoutes) deleteSong(c echo.Context) error {
 	params := c.QueryParams()
 
@@ -160,11 +208,24 @@ func (r *songRoutes) deleteSong(c echo.Context) error {
 	return c.JSON(200, "Success!")
 }
 
+// @Summary 		Upload Song
+// @Description 	Upload a new song
+// @Tags 			Songs
+// @Param			group				formData	string		true    "desired group"
+// @Param 			song				formData	string		true    "desired song"
+// @Param			releaseDate			formData	string		true    "song release date"
+// @Param 			link				formData	string		true	"link to some media"
+// @Param 			text				formData	string		true	"song lyrics"
+// @Success			200 				{object} 	string
+// @Failure 		400					{object}    echo.HTTPError
+// @Failure			404					{object}	echo.HTTPError
+// @Failure			500					{object} 	echo.HTTPError
+// @Router 			/api/v1/songs [post]
 func (r *songRoutes) uploadSong(c echo.Context) error {
-	params := c.QueryParams()
+	params, _ := c.FormParams()
 
 	if !params.Has("song") || !params.Has("group") || !params.Has("releaseDate") || !params.Has("link") || !params.Has("text") {
-		return ErrBadQuery
+		return ErrBadBody
 	}
 
 	releaseDate, err := time.Parse(time.DateOnly, params.Get("releaseDate"))
@@ -192,9 +253,24 @@ func (r *songRoutes) uploadSong(c echo.Context) error {
 	return c.JSON(200, "Success!")
 }
 
+// @Summary 		Update Song
+// @Description 	Upload specific song data
+// @Tags 			Songs
+// @Param			group				query		string		true    "initial group"
+// @Param 			song				query		string		true    "initial song"
+// @Param			group				formData	string		true    "edited group"
+// @Param 			song				formData	string		true    "edited song"
+// @Param			releaseDate			formData	string		true    "edited release date"
+// @Param 			link				formData	string		true	"edited link to some media"
+// @Param 			text				formData	string		true	"edited song lyrics"
+// @Success			200 				{object} 	string
+// @Failure 		400					{object}    echo.HTTPError
+// @Failure			404					{object}	echo.HTTPError
+// @Failure			500					{object} 	echo.HTTPError
+// @Router 			/api/v1/songs [put]
 func (r *songRoutes) updateSong(c echo.Context) error {
 	queryParams := c.QueryParams()
-	formParams := c.Request().Form
+	formParams, _ := c.FormParams()
 
 	if !queryParams.Has("group") || !queryParams.Has("song") {
 		return ErrBadQuery
@@ -205,8 +281,8 @@ func (r *songRoutes) updateSong(c echo.Context) error {
 	}
 
 	oldSong := models.Song{
-		GroupName: queryParams.Get("group"),
-		SongName:  queryParams.Get("song"),
+		GroupName: queryParams["group"][0],
+		SongName:  queryParams["song"][0],
 	}
 
 	parsedDate, err := time.Parse(time.DateOnly, formParams.Get("releaseDate"))
@@ -216,8 +292,8 @@ func (r *songRoutes) updateSong(c echo.Context) error {
 
 	newSong := models.SongWithDetailPlain{
 		Song: models.Song{
-			GroupName: formParams.Get("group"),
-			SongName:  formParams.Get("song"),
+			GroupName: formParams["group"][1],
+			SongName:  formParams["song"][1],
 		},
 		SongDetail: models.SongDetail{
 			ReleaseDate: parsedDate,
@@ -227,7 +303,9 @@ func (r *songRoutes) updateSong(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
-	r.srv.Update(ctx, oldSong, newSong)
+	if err := r.srv.Update(ctx, oldSong, newSong); err != nil {
+		return r.e.Map(err)
+	}
 
 	return c.JSON(200, "Success!")
 

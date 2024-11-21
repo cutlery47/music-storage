@@ -225,6 +225,10 @@ func (mr *MusicRepository) ReadText(ctx context.Context, limit, offset int, song
 		verses = append(verses, verse)
 	}
 
+	if len(verses) == 0 {
+		return nil, ErrNotFound
+	}
+
 	return verses, nil
 }
 
@@ -300,7 +304,7 @@ func (mr *MusicRepository) Update(ctx context.Context, song models.Song, upd mod
 		return fmt.Errorf("stmtDeleteOldVerses.ExecContext: %v", err)
 	}
 
-	// опять же, собираем значения для prepared statments
+	// опять же, собираем значения для prepared statements
 	var vals []interface{}
 	for i, verse := range upd.Verses {
 		vals = append(vals, id, i+1, verse)

@@ -1,0 +1,302 @@
+basePath: /
+definitions:
+  echo.HTTPError:
+    properties:
+      message: {}
+    type: object
+  models.SongDetail:
+    properties:
+      link:
+        type: string
+      releaseDate:
+        type: string
+    type: object
+  models.SongWithDetail:
+    properties:
+      groupName:
+        type: string
+      link:
+        type: string
+      releaseDate:
+        type: string
+      songName:
+        type: string
+    type: object
+info:
+  contact:
+    email: kitchen_cutlery@mail.ru
+    name: Ivanchenko Arkhip
+  description: This a service for storing music
+  title: Online Music Storage Service
+  version: 0.0.1
+paths:
+  /api/v1/songs:
+    delete:
+      description: Delete specific song
+      parameters:
+      - description: desired group
+        in: query
+        name: group
+        required: true
+        type: string
+      - description: desired song
+        in: query
+        name: song
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Delete Song
+      tags:
+      - Songs
+    get:
+      description: Get songs by specified filters
+      parameters:
+      - description: desired group
+        in: query
+        name: group
+        type: string
+      - description: desired song
+        in: query
+        name: song
+        type: string
+      - description: upper time-bound for when the song was released
+        in: query
+        name: releasedBefore
+        type: string
+      - description: lower time-bound for when the song was released
+        in: query
+        name: releasedAfter
+        type: string
+      - description: pagination limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: pagination offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SongWithDetail'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get Songs
+      tags:
+      - Songs
+    post:
+      description: Upload a new song
+      parameters:
+      - description: desired group
+        in: formData
+        name: group
+        required: true
+        type: string
+      - description: desired song
+        in: formData
+        name: song
+        required: true
+        type: string
+      - description: song release date
+        in: formData
+        name: releaseDate
+        required: true
+        type: string
+      - description: link to some media
+        in: formData
+        name: link
+        required: true
+        type: string
+      - description: song lyrics
+        in: formData
+        name: text
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Upload Song
+      tags:
+      - Songs
+    put:
+      description: Upload specific song data
+      parameters:
+      - description: initial group
+        in: query
+        name: group
+        required: true
+        type: string
+      - description: initial song
+        in: query
+        name: song
+        required: true
+        type: string
+      - description: edited group
+        in: formData
+        name: group
+        required: true
+        type: string
+      - description: edited song
+        in: formData
+        name: song
+        required: true
+        type: string
+      - description: edited release date
+        in: formData
+        name: releaseDate
+        required: true
+        type: string
+      - description: edited link to some media
+        in: formData
+        name: link
+        required: true
+        type: string
+      - description: edited song lyrics
+        in: formData
+        name: text
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Update Song
+      tags:
+      - Songs
+  /api/v1/songs/info:
+    get:
+      description: Get info about a particular song
+      parameters:
+      - description: desired group
+        in: query
+        name: group
+        required: true
+        type: string
+      - description: desired song
+        in: query
+        name: song
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SongDetail'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get Info
+      tags:
+      - Songs
+  /api/v1/songs/text:
+    get:
+      description: Get specified songs' lyrics
+      parameters:
+      - description: desired group
+        in: query
+        name: group
+        required: true
+        type: string
+      - description: desired song
+        in: query
+        name: song
+        required: true
+        type: string
+      - description: pagination limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: pagination offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      summary: Get Texts
+      tags:
+      - Songs
+swagger: "2.0"

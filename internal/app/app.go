@@ -14,6 +14,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// @title           Online Music Storage Service
+// @version         0.0.1
+// @description     This a service for storing music
+
+// @contact.name   Ivanchenko Arkhip
+// @contact.email  kitchen_cutlery@mail.ru
+
+// @BasePath  /
+
 func Run() error {
 	ctx := context.Background()
 
