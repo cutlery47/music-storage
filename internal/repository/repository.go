@@ -81,20 +81,12 @@ func (mr *MusicRepository) Create(ctx context.Context, song models.SongWithDetai
 	}
 	defer tx.Rollback()
 
-	stmtInsertSong, err := tx.PrepareContext(ctx, queryInsertSong)
+	stmts, err := mr.prepareContexts(ctx, tx, queryInsertSong, queryInsertDetail, queryInsertText)
 	if err != nil {
-		return fmt.Errorf("tx.PrepareContext: %v", err)
+		return fmt.Errorf("prepareContexts: %v", err)
 	}
 
-	stmtInsertDetail, err := tx.PrepareContext(ctx, queryInsertDetail)
-	if err != nil {
-		return fmt.Errorf("tx.PrepareContext: %v", err)
-	}
-
-	stmtInsertText, err := tx.PrepareContext(ctx, queryInsertText)
-	if err != nil {
-		return fmt.Errorf("tx.PrepareContext: %v", err)
-	}
+	stmtInsertSong, stmtInsertDetail, stmtInsertText := stmts[0], stmts[1], stmts[2]
 
 	var id uuid.UUID
 
@@ -234,7 +226,87 @@ func (mr *MusicRepository) ReadText(ctx context.Context, limit, offset int, song
 }
 
 func (mr *MusicRepository) Update(ctx context.Context, song models.Song, upd models.SongWithDetailSplit) error {
-	return nil
+	queryUpdateSong :=
+		`
+	UPDATE music_schema.songs
+	SET 
+	group_name = $1,
+	song_name = $2
+	WHERE 
+	group_name = $3 AND song_name = $4
+	RETURNING id
+	`
+
+	queryUpdateDetail :=
+		`
+	UPDATE music_schema.songs_details
+	SET 
+	released_at = $1,
+	link = $2
+	WHERE 
+	song_id = $3
+	`
+
+	queryDeleteOldVerses :=
+		`
+	DELETE FROM music_schema.songs_verses AS sv
+	WHERE sv.song_id = $1
+	`
+
+	queryAddNewVerses :=
+		`
+	INSERT INTO music_schema.songs_verses AS sv
+	(song_id, verse_id, verse)
+	VALUES
+	`
+
+	for i := range upd.Verses {
+		queryAddNewVerses += fmt.Sprintf("($%v, $%v, $%v),\n", (i+1)*3-2, (i+1)*3-1, (i+1)*3)
+	}
+	queryAddNewVerses = strings.TrimSuffix(queryAddNewVerses, ",\n")
+
+	tx, err := mr.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("mr.db.BeginTx: %v", err)
+	}
+	defer tx.Rollback()
+
+	stmts, err := mr.prepareContexts(ctx, tx, queryUpdateSong, queryUpdateDetail, queryDeleteOldVerses, queryAddNewVerses)
+	if err != nil {
+		return fmt.Errorf("mr.prepareContexts: %v", err)
+	}
+
+	stmtUpdateSong, stmtUpdateDetail, stmtDeleteOldVerses, stmtAddNewVerses := stmts[0], stmts[1], stmts[2], stmts[3]
+
+	var id uuid.UUID
+
+	res := stmtUpdateSong.QueryRowContext(ctx, upd.GroupName, upd.SongName, song.GroupName, song.SongName)
+	if err := res.Scan(&id); err != nil {
+		// проверка на уникальность
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("stmtUpdateSong.QueryRowContext: %v", err)
+	}
+
+	if _, err := stmtUpdateDetail.ExecContext(ctx, upd.ReleaseDate, upd.Link, id); err != nil {
+		return fmt.Errorf("stmtUpdateDetail.ExecContext: %v", err)
+	}
+
+	if _, err := stmtDeleteOldVerses.ExecContext(ctx, id); err != nil {
+		return fmt.Errorf("stmtDeleteOldVerses.ExecContext: %v", err)
+	}
+
+	var vals []interface{}
+	for i, verse := range upd.Verses {
+		vals = append(vals, id, i+1, verse)
+	}
+
+	if _, err := stmtAddNewVerses.ExecContext(ctx, vals...); err != nil {
+		return fmt.Errorf("stmtAddNewVerses.ExecContext: %v", err)
+	}
+
+	return tx.Commit()
 }
 
 func (mr *MusicRepository) Delete(ctx context.Context, song models.Song) error {
@@ -267,6 +339,20 @@ func (mr *MusicRepository) Delete(ctx context.Context, song models.Song) error {
 	}
 
 	return nil
+}
+
+func (mr *MusicRepository) prepareContexts(ctx context.Context, tx *sql.Tx, queries ...string) ([]*sql.Stmt, error) {
+	stmts := []*sql.Stmt{}
+
+	for _, query := range queries {
+		stmt, err := tx.PrepareContext(ctx, query)
+		if err != nil {
+			return nil, fmt.Errorf("PrepareContext: %v", err)
+		}
+		stmts = append(stmts, stmt)
+	}
+
+	return stmts, nil
 }
 
 // Принимаем структуру, содержащую всевозможные фильтры для поиска песни, а также лимит и оффсет для пагинации.

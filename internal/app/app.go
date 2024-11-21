@@ -77,7 +77,30 @@ func Run() error {
 
 	fmt.Println("text:", newText)
 
-	if err := srv.Delete(ctx, newSong.Song); err != nil {
+	updSong := models.SongWithDetailPlain{
+		Song: models.Song{
+			GroupName: "Kendrick Lamar",
+			SongName:  "6:17 in LA",
+		},
+		SongDetail: models.SongDetail{
+			ReleaseDate: time.Now(),
+			Link:        "https://example.com/xyu",
+		},
+		Text: "I fuck didi\n I love drake\n I fuck didi\n I love drake\n I fuck didi\n",
+	}
+
+	if err := srv.Update(ctx, newSong.Song, updSong); err != nil {
+		return fmt.Errorf("srv.Update: %v", err)
+	}
+
+	anotherText, err := srv.GetText(ctx, 2, 4, updSong.Song)
+	if err != nil {
+		return fmt.Errorf("srv.GetText: %v", err)
+	}
+
+	fmt.Println("another text:", anotherText)
+
+	if err := srv.Delete(ctx, updSong.Song); err != nil {
 		return fmt.Errorf("srv.Delete: %v", err)
 	}
 
