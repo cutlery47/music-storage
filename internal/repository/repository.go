@@ -30,6 +30,7 @@ type Repository interface {
 	Delete(ctx context.Context, song models.Song) error
 }
 
+// Repository impl
 type MusicRepository struct {
 	db *sql.DB
 }
@@ -70,6 +71,7 @@ func (mr *MusicRepository) Create(ctx context.Context, song models.SongWithDetai
 	VALUES
 	`
 
+	// добавляем метки о всех куплетах, что хотим добавить
 	for i := range song.Verses {
 		queryInsertText += fmt.Sprintf("($%v, $%v, $%v),\n", (i+1)*3-2, (i+1)*3-1, (i+1)*3)
 	}
@@ -104,6 +106,7 @@ func (mr *MusicRepository) Create(ctx context.Context, song models.SongWithDetai
 		return fmt.Errorf("stmtInsertDetail.ExecContext: %v", err)
 	}
 
+	// собираем значения для prepared statements
 	var vals []interface{}
 	for i, verse := range song.Verses {
 		vals = append(vals, id, i+1, verse)
@@ -297,6 +300,7 @@ func (mr *MusicRepository) Update(ctx context.Context, song models.Song, upd mod
 		return fmt.Errorf("stmtDeleteOldVerses.ExecContext: %v", err)
 	}
 
+	// опять же, собираем значения для prepared statments
 	var vals []interface{}
 	for i, verse := range upd.Verses {
 		vals = append(vals, id, i+1, verse)
@@ -341,6 +345,7 @@ func (mr *MusicRepository) Delete(ctx context.Context, song models.Song) error {
 	return nil
 }
 
+// Подготавливает запросы в качестве prepared staments
 func (mr *MusicRepository) prepareContexts(ctx context.Context, tx *sql.Tx, queries ...string) ([]*sql.Stmt, error) {
 	stmts := []*sql.Stmt{}
 

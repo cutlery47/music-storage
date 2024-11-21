@@ -3,106 +3,69 @@ package app
 import (
 	"context"
 	"fmt"
-	"log"
-	"time"
 
-	"github.com/cutlery47/music-storage/internal/models"
+	"github.com/cutlery47/music-storage/internal/config"
+	v1 "github.com/cutlery47/music-storage/internal/controller/http/v1"
 	"github.com/cutlery47/music-storage/internal/repository"
 	"github.com/cutlery47/music-storage/internal/service"
+	"github.com/cutlery47/music-storage/pkg/httpserver"
+	"github.com/cutlery47/music-storage/pkg/logger"
+	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
 )
 
 func Run() error {
 	ctx := context.Background()
 
-	url := "postgresql://postgres:postgres@localhost:5433/music?sslmode=disable"
+	config, err := config.New()
+	if err != nil {
+		return fmt.Errorf("error when parsing config: %v", err)
+	}
 
+	debugLog, err := logger.NewDefaultCli(logrus.DebugLevel)
+	if err != nil {
+		return fmt.Errorf("error when creating debug logger: %v", err)
+	}
+
+	infoLog, err := logger.NewJsonFile(config.InfoPath, logrus.InfoLevel)
+	if err != nil {
+		return fmt.Errorf("error when creating info logger: %v", err)
+	}
+
+	errLog, err := logger.NewJsonFile(config.ErrorPath, logrus.ErrorLevel)
+	if err != nil {
+		return fmt.Errorf("error when creating debug loffer: %v", err)
+	}
+
+	url := fmt.Sprintf(
+		"postgresql://%v:%v@music-postgres-container123:%v/music?sslmode=%v",
+		config.PostgresSSL,
+		config.PostgresPassword,
+		config.PostgresPort,
+		config.PostgresSSL,
+	)
+
+	debugLog.Debug("initializing repo...")
 	repo, err := repository.NewMusicRepository(url)
 	if err != nil {
-		return fmt.Errorf("couldn't connect to the database: %v", err)
+		return fmt.Errorf("error when connecting to the db: %v", err)
 	}
 
+	debugLog.Debug("initializing service...")
 	srv := service.NewMusicService(repo)
 
-	// date := time.Date(2001, 10, 8, 0, 0, 0, 0, time.UTC)
-	// group := "Linkin Park"
+	debugLog.Debug("initializing controller...")
+	echo := echo.New()
+	v1.NewController(echo, srv, infoLog, errLog)
 
-	filter := models.Filter{}
+	debugLog.Debug("initializing http server...")
+	httpserver := httpserver.New(
+		echo,
+		httpserver.Addr(config.Interface, config.Port),
+		httpserver.ReadTimeout(config.ReadTimeout),
+		httpserver.WriteTimeout(config.WriteTimeout),
+		httpserver.ShutdownTimeout(config.ShutdownTimeout),
+	)
 
-	songs, err := srv.GetSongs(ctx, 10, 0, filter)
-	if err != nil {
-		return fmt.Errorf("srv.GetSongs: %v", err)
-	}
-
-	log.Println("songs:", songs)
-
-	song := models.Song{
-		GroupName: "Coldplay",
-		SongName:  "Fix You",
-	}
-
-	info, err := srv.GetDetail(ctx, song)
-	if err != nil {
-		return fmt.Errorf("srv.GetDetail: %v", err)
-	}
-
-	log.Println("info:", info)
-
-	text, err := srv.GetText(ctx, 1, 1, song)
-	if err != nil {
-		return fmt.Errorf("srv.GetText: %v", err)
-	}
-
-	log.Println("text:", text)
-
-	newSong := models.SongWithDetailPlain{
-		Song: models.Song{
-			GroupName: "Kendrick Lamar",
-			SongName:  "6:16 in LA",
-		},
-		SongDetail: models.SongDetail{
-			ReleaseDate: time.Now(),
-			Link:        "https://example.com/xyu",
-		},
-		Text: "I fuck Drake aye, aye\n I love kids aye, aye\n",
-	}
-
-	if err := srv.Create(ctx, newSong); err != nil {
-		return fmt.Errorf("srv.Create: %v", err)
-	}
-
-	newText, err := srv.GetText(ctx, 10, 0, newSong.Song)
-	if err != nil {
-		return fmt.Errorf("srv.GetText: %v", err)
-	}
-
-	fmt.Println("text:", newText)
-
-	updSong := models.SongWithDetailPlain{
-		Song: models.Song{
-			GroupName: "Kendrick Lamar",
-			SongName:  "6:17 in LA",
-		},
-		SongDetail: models.SongDetail{
-			ReleaseDate: time.Now(),
-			Link:        "https://example.com/xyu",
-		},
-		Text: "I fuck didi\n I love drake\n I fuck didi\n I love drake\n I fuck didi\n",
-	}
-
-	if err := srv.Update(ctx, newSong.Song, updSong); err != nil {
-		return fmt.Errorf("srv.Update: %v", err)
-	}
-
-	anotherText, err := srv.GetText(ctx, 2, 4, updSong.Song)
-	if err != nil {
-		return fmt.Errorf("srv.GetText: %v", err)
-	}
-
-	fmt.Println("another text:", anotherText)
-
-	if err := srv.Delete(ctx, updSong.Song); err != nil {
-		return fmt.Errorf("srv.Delete: %v", err)
-	}
-
-	return nil
+	return httpserver.Run(ctx, debugLog)
 }

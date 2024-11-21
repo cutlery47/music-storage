@@ -10,14 +10,21 @@ import (
 )
 
 type Service interface {
+	// Обработка текста и передача в хранилище
 	Create(ctx context.Context, song models.SongWithDetailPlain) error
+	// Получение информации о песнях по произвольным фильтрам
 	GetSongs(ctx context.Context, limit, offset int, filter models.Filter) ([]models.SongWithDetail, error)
+	// Получение текста песни по куплетам
 	GetText(ctx context.Context, limit, offset int, song models.Song) (string, error)
+	// Получение информации о конкретной песне
 	GetDetail(ctx context.Context, song models.Song) (models.SongDetail, error)
+	// Обновление информации о песне
+	Update(ctx context.Context, song models.Song, upd models.SongWithDetailPlain) error
+	// Удаление песни
 	Delete(ctx context.Context, song models.Song) error
-	Update(ctx context.Context, song models.Song, upd models.SongWithDetail) error
 }
 
+// Service impl
 type MusicService struct {
 	repo repository.Repository
 }

@@ -9,7 +9,7 @@ services:
   #     - "music-app-image:latest"
   #   env_file: '.env'
   #   ports:
-  #     - "${APPLICATION_PORT}:${APPLICATION_PORT}"
+  #     - "${HTTP_PORT}:${HTTP_PORT}"
 
   postgres:
     container_name: music-postgres-container
@@ -20,7 +20,7 @@ services:
       tags:
       - "music-postgres-image:latest"
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT}:5432"
     # expose:
     #   - "5432"
     env_file: '.env'
