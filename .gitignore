@@ -23,5 +23,3 @@ go.work.sum
 
 *.log
 
-# env file
-.env

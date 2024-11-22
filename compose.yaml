@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile.app
       tags:
       - "music-app-image:latest"
-    env_file: 'default.env'
+    env_file: '.env'
     ports:
       - "${HTTP_PORT}:${HTTP_PORT}"
     volumes:
@@ -23,7 +23,7 @@ services:
       - "music-postgres-image:latest"
     expose:
       - "${POSTGRES_PORT}"
-    env_file: 'default.env'
+    env_file: '.env'
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
