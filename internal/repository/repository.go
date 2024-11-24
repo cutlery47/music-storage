@@ -83,16 +83,9 @@ func (mr *MusicRepository) Create(ctx context.Context, song models.SongWithDetai
 	}
 	defer tx.Rollback()
 
-	stmts, err := mr.prepareContexts(ctx, tx, queryInsertSong, queryInsertDetail, queryInsertText)
-	if err != nil {
-		return fmt.Errorf("prepareContexts: %v", err)
-	}
-
-	stmtInsertSong, stmtInsertDetail, stmtInsertText := stmts[0], stmts[1], stmts[2]
-
 	var id uuid.UUID
 
-	res := stmtInsertSong.QueryRowContext(ctx, song.GroupName, song.SongName)
+	res := tx.QueryRowContext(ctx, queryInsertSong, song.GroupName, song.SongName)
 	if err := res.Scan(&id); err != nil {
 		// проверка на уникальность
 		if pqerr, ok := err.(*pq.Error); ok && pqerr.Code == "23505" {
@@ -101,9 +94,9 @@ func (mr *MusicRepository) Create(ctx context.Context, song models.SongWithDetai
 		return fmt.Errorf("res.Scan: %v", err)
 	}
 
-	_, err = stmtInsertDetail.ExecContext(ctx, id, song.ReleaseDate, song.Link)
+	_, err = tx.ExecContext(ctx, queryInsertDetail, id, song.ReleaseDate, song.Link)
 	if err != nil {
-		return fmt.Errorf("stmtInsertDetail.ExecContext: %v", err)
+		return fmt.Errorf("st.ExecContext: %v", err)
 	}
 
 	// собираем значения для prepared statements
@@ -112,9 +105,9 @@ func (mr *MusicRepository) Create(ctx context.Context, song models.SongWithDetai
 		vals = append(vals, id, i+1, verse)
 	}
 
-	_, err = stmtInsertText.ExecContext(ctx, vals...)
+	_, err = tx.ExecContext(ctx, queryInsertText, vals...)
 	if err != nil {
-		return fmt.Errorf("stmtInsertText.ExecContext")
+		return fmt.Errorf("tx.ExecContext")
 	}
 
 	return tx.Commit()
@@ -136,13 +129,7 @@ func (mr *MusicRepository) Read(ctx context.Context, limit, offset int, filter m
 
 	query = mr.applyFilters(query, filter, limit, offset, &appliedFilters)
 
-	stmt, err := mr.db.PrepareContext(ctx, query)
-	if err != nil {
-		return []models.SongWithDetail{}, fmt.Errorf("mr.db.PrepareContext: %v", err)
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx, appliedFilters...)
+	rows, err := mr.db.QueryContext(ctx, query, appliedFilters...)
 	if err != nil {
 		return []models.SongWithDetail{}, fmt.Errorf("stmt.QueryContext: %v", err)
 	}
@@ -171,13 +158,7 @@ func (mr *MusicRepository) ReadDetail(ctx context.Context, song models.Song) (mo
 	s.group_name = $1 AND s.song_name = $2
 	`
 
-	stmt, err := mr.db.PrepareContext(ctx, query)
-	if err != nil {
-		return models.SongDetail{}, fmt.Errorf("mr.db.PrepareContext: %v", err)
-	}
-	defer stmt.Close()
-
-	row := stmt.QueryRowContext(ctx, song.GroupName, song.SongName)
+	row := mr.db.QueryRowContext(ctx, query, song.GroupName, song.SongName)
 
 	detail := models.SongDetail{}
 	if err := row.Scan(&detail.ReleaseDate, &detail.Link); err != nil {
@@ -207,13 +188,7 @@ func (mr *MusicRepository) ReadText(ctx context.Context, limit, offset int, song
 	OFFSET $4 
 	`
 
-	stmt, err := mr.db.PrepareContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("mr.db.PrepareContext: %v", err)
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx, song.GroupName, song.SongName, limit, offset)
+	rows, err := mr.db.QueryContext(ctx, query, song.GroupName, song.SongName, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("stmt.ExecContext: %v", err)
 	}
@@ -278,30 +253,23 @@ func (mr *MusicRepository) Update(ctx context.Context, song models.Song, upd mod
 	}
 	defer tx.Rollback()
 
-	stmts, err := mr.prepareContexts(ctx, tx, queryUpdateSong, queryUpdateDetail, queryDeleteOldVerses, queryAddNewVerses)
-	if err != nil {
-		return fmt.Errorf("mr.prepareContexts: %v", err)
-	}
-
-	stmtUpdateSong, stmtUpdateDetail, stmtDeleteOldVerses, stmtAddNewVerses := stmts[0], stmts[1], stmts[2], stmts[3]
-
 	var id uuid.UUID
 
-	res := stmtUpdateSong.QueryRowContext(ctx, upd.GroupName, upd.SongName, song.GroupName, song.SongName)
+	res := tx.QueryRowContext(ctx, queryUpdateSong, upd.GroupName, upd.SongName, song.GroupName, song.SongName)
 	if err := res.Scan(&id); err != nil {
 		// проверка на уникальность
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}
-		return fmt.Errorf("stmtUpdateSong.QueryRowContext: %v", err)
+		return fmt.Errorf("tx.QueryRowContext: %v", err)
 	}
 
-	if _, err := stmtUpdateDetail.ExecContext(ctx, upd.ReleaseDate, upd.Link, id); err != nil {
-		return fmt.Errorf("stmtUpdateDetail.ExecContext: %v", err)
+	if _, err := tx.ExecContext(ctx, queryUpdateDetail, upd.ReleaseDate, upd.Link, id); err != nil {
+		return fmt.Errorf("tx.QueryRowContext: %v", err)
 	}
 
-	if _, err := stmtDeleteOldVerses.ExecContext(ctx, id); err != nil {
-		return fmt.Errorf("stmtDeleteOldVerses.ExecContext: %v", err)
+	if _, err := tx.ExecContext(ctx, queryDeleteOldVerses, id); err != nil {
+		return fmt.Errorf("tx.QueryRowContext %v", err)
 	}
 
 	// опять же, собираем значения для prepared statements
@@ -310,8 +278,8 @@ func (mr *MusicRepository) Update(ctx context.Context, song models.Song, upd mod
 		vals = append(vals, id, i+1, verse)
 	}
 
-	if _, err := stmtAddNewVerses.ExecContext(ctx, vals...); err != nil {
-		return fmt.Errorf("stmtAddNewVerses.ExecContext: %v", err)
+	if _, err := tx.ExecContext(ctx, queryAddNewVerses, vals...); err != nil {
+		return fmt.Errorf("tx.QueryRowContext %v", err)
 	}
 
 	return tx.Commit()
@@ -324,13 +292,7 @@ func (mr *MusicRepository) Delete(ctx context.Context, song models.Song) error {
 	WHERE s.group_name = $1 AND s.song_name = $2;
 	`
 
-	stmt, err := mr.db.PrepareContext(ctx, query)
-	if err != nil {
-		return fmt.Errorf("mr.db.PrepareContext: %v", err)
-	}
-	defer stmt.Close()
-
-	res, err := stmt.ExecContext(ctx, song.GroupName, song.SongName)
+	res, err := mr.db.ExecContext(ctx, query, song.GroupName, song.SongName)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext: %v", err)
 	}
@@ -347,21 +309,6 @@ func (mr *MusicRepository) Delete(ctx context.Context, song models.Song) error {
 	}
 
 	return nil
-}
-
-// Подготавливает запросы в качестве prepared staments
-func (mr *MusicRepository) prepareContexts(ctx context.Context, tx *sql.Tx, queries ...string) ([]*sql.Stmt, error) {
-	stmts := []*sql.Stmt{}
-
-	for _, query := range queries {
-		stmt, err := tx.PrepareContext(ctx, query)
-		if err != nil {
-			return nil, fmt.Errorf("PrepareContext: %v", err)
-		}
-		stmts = append(stmts, stmt)
-	}
-
-	return stmts, nil
 }
 
 // Принимаем структуру, содержащую всевозможные фильтры для поиска песни, а также лимит и оффсет для пагинации.
