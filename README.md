@@ -18,7 +18,7 @@ git clone git@github.com:cutlery47/music-storage.git
 3. В корневой директории проекта прописываем:
 
 `
-make up build
+make up_build
 `
 
 В результате выполнения данной команды у нас сбилдятся образы и запустятся контейнеры.
