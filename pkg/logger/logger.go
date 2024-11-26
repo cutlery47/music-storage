@@ -6,26 +6,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewJsonFile(filepath string, level logrus.Level) (*logrus.Logger, error) {
+func New(level logrus.Level) *logrus.Logger {
 	logger := logrus.New()
-
-	fd, err := os.OpenFile(filepath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
-	if err != nil {
-		return nil, err
-	}
-
-	logger.SetOutput(fd)
-	logger.SetFormatter(&logrus.JSONFormatter{})
 	logger.SetLevel(level)
+	logger.SetOutput(os.Stdout)
 
-	return logger, nil
+	return logger
 }
 
-func NewDefaultCli(level logrus.Level) (*logrus.Logger, error) {
-	logger := logrus.New()
+func WithFile(logger *logrus.Logger, fd *os.File) *logrus.Logger {
+	logger.SetOutput(fd)
 
-	logger.SetOutput(os.Stdout)
-	logger.SetLevel(level)
+	return logger
+}
 
-	return logger, nil
+func WithFormat(logger *logrus.Logger, format *logrus.JSONFormatter) *logrus.Logger {
+	logger.SetFormatter(format)
+
+	return logger
 }

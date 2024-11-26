@@ -1,7 +1,7 @@
 services:
   app:
-    container_name: music-app-container
-    image: music-app-image
+    container_name: music-app
+    image: music-app-iamge:latest
     build:
       context: .
       dockerfile: Dockerfile.app
@@ -11,10 +11,13 @@ services:
     ports:
       - "${HTTP_PORT}:${HTTP_PORT}"
     volumes:
-      - '${OUTTER_LOGS_DIR}:/go/logs/'
+      - './${LOGS_DIR}:/go/logs/'
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   postgres:
-    container_name: music-postgres-container
+    container_name: ${POSTGRES_HOST}
     image: music-postgres-image:latest
     build:
       context: .
@@ -24,10 +27,14 @@ services:
     expose:
       - "${POSTGRES_PORT}"
     env_file: '.env'
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - 'postgres_data:/var/lib/postgersql/data'
+    restart: unless-stopped
+    healthcheck:
+      test: pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+      interval: 5s
+      timeout: 5s
+      retries: 3
 
 volumes:
   postgres_data:

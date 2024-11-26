@@ -1,9 +1,11 @@
 package main
 
 import (
+	"log"
+
 	"github.com/cutlery47/music-storage/internal/app"
 )
 
 func main() {
-	app.Run()
+	log.Fatal("error: ", app.Run())
 }

@@ -8,6 +8,7 @@ import (
 	v1 "github.com/cutlery47/music-storage/internal/controller/http/v1"
 	"github.com/cutlery47/music-storage/internal/repository"
 	"github.com/cutlery47/music-storage/internal/service"
+	"github.com/cutlery47/music-storage/internal/utils"
 	"github.com/cutlery47/music-storage/pkg/httpserver"
 	"github.com/cutlery47/music-storage/pkg/logger"
 	"github.com/labstack/echo/v4"
@@ -31,43 +32,32 @@ func Run() error {
 		return fmt.Errorf("error when parsing config: %v", err)
 	}
 
-	debugLog, err := logger.NewDefaultCli(logrus.DebugLevel)
+	infoFd, err := utils.CreateAndOpen(config.InfoPath)
 	if err != nil {
-		return fmt.Errorf("error when creating debug logger: %v", err)
+		return fmt.Errorf("error when creaing info log file: %v", err)
 	}
 
-	infoLog, err := logger.NewJsonFile(config.InfoPath, logrus.InfoLevel)
+	errFd, err := utils.CreateAndOpen(config.ErrorPath)
 	if err != nil {
-		return fmt.Errorf("error when creating info logger: %v", err)
+		return fmt.Errorf("error when creating error log file: %v", err)
 	}
 
-	errLog, err := logger.NewJsonFile(config.ErrorPath, logrus.ErrorLevel)
-	if err != nil {
-		return fmt.Errorf("error when creating debug loffer: %v", err)
-	}
+	infoLog := logger.WithFormat(logger.WithFile(logger.New(logrus.InfoLevel), infoFd), &logrus.JSONFormatter{})
+	errLog := logger.WithFormat(logger.WithFile(logger.New(logrus.ErrorLevel), errFd), &logrus.JSONFormatter{})
 
-	url := fmt.Sprintf(
-		"postgresql://%v:%v@music-postgres-container:%v/music?sslmode=%v",
-		config.PostgresUser,
-		config.PostgresPassword,
-		config.PostgresPort,
-		config.PostgresSSL,
-	)
-
-	debugLog.Debug("initializing repo...")
-	repo, err := repository.NewMusicRepository(url)
+	repo, err := repository.NewMusicRepository(ctx, config.PostgresConfig)
 	if err != nil {
 		return fmt.Errorf("error when connecting to the db: %v", err)
 	}
 
-	debugLog.Debug("initializing service...")
+	logrus.Debug("initializing service...")
 	srv := service.NewMusicService(repo)
 
-	debugLog.Debug("initializing controller...")
+	logrus.Debug("initializing controller...")
 	echo := echo.New()
 	v1.NewController(echo, srv, infoLog, errLog)
 
-	debugLog.Debug("initializing http server...")
+	logrus.Debug("initializing http server...")
 	httpserver := httpserver.New(
 		echo,
 		httpserver.Addr(config.Interface, config.Port),
@@ -76,5 +66,5 @@ func Run() error {
 		httpserver.ShutdownTimeout(config.ShutdownTimeout),
 	)
 
-	return httpserver.Run(ctx, debugLog)
+	return httpserver.Run(ctx)
 }

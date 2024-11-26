@@ -46,12 +46,12 @@ func New(handler http.Handler, opts ...Option) *Server {
 	return serv
 }
 
-func (s *Server) Run(ctx context.Context, debugLog *logrus.Logger) error {
-	debugLog.Debug(fmt.Sprintf("running http server on %v", s.server.Addr))
+func (s *Server) Run(ctx context.Context) error {
+	logrus.Debug(fmt.Sprintf("running http server on %v", s.server.Addr))
 
 	go func() {
 		if err := s.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			debugLog.Debug("http server error:", err)
+			logrus.Debug("http server error:", err)
 		}
 	}()
 
@@ -60,7 +60,7 @@ func (s *Server) Run(ctx context.Context, debugLog *logrus.Logger) error {
 
 	<-sigChan
 
-	debugLog.Debug("Shutting down http server")
+	logrus.Debug("Shutting down http server")
 
 	ctx, cancel := context.WithTimeout(ctx, s.shutdownTimeout)
 	defer cancel()

@@ -8,11 +8,18 @@ import (
 	"log"
 	"strings"
 
+	"github.com/cutlery47/music-storage/internal/config"
 	"github.com/cutlery47/music-storage/internal/models"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 type Repository interface {
@@ -35,11 +42,51 @@ type MusicRepository struct {
 	db *sql.DB
 }
 
-func NewMusicRepository(url string) (*MusicRepository, error) {
+func NewMusicRepository(ctx context.Context, conf config.PostgresConfig) (*MusicRepository, error) {
+	url := fmt.Sprintf(
+		"postgresql://%v:%v@%v:%v/%v?sslmode=%v",
+		conf.PostgresUser,
+		conf.PostgresPassword,
+		conf.PostgresHost,
+		conf.PostgresPort,
+		conf.PostgresDB,
+		conf.PostgresSSL,
+	)
+
 	db, err := sql.Open("postgres", url)
 	if err != nil {
 		return nil, err
 	}
+
+	toCtx, cancel := context.WithTimeout(ctx, conf.PostgresTimeout*10)
+	defer cancel()
+
+	if err := db.PingContext(toCtx); err != nil {
+		return nil, fmt.Errorf("couldn't establish connection with postgres: %v", err)
+	}
+	logrus.Debug("sucessfully established postgres connection!")
+
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("postgres.WithInstance: %v", err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(fmt.Sprintf("file://%v", conf.PostgresMigrations), conf.PostgresDB, driver)
+	if err != nil {
+		return nil, fmt.Errorf("migrate.New: %v", err)
+	}
+
+	logrus.Debug("applying migrations...")
+	if err := m.Up(); err != nil {
+		if errors.Is(err, migrate.ErrNoChange) {
+			logrus.Debug("nothing to migrate")
+		} else {
+			return nil, fmt.Errorf("error when migrating: %v", err)
+		}
+	} else {
+		logrus.Debug("migrated successfully!")
+	}
+	defer m.Close()
 
 	return &MusicRepository{
 		db: db,
